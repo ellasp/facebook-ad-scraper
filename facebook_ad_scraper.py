@@ -19,6 +19,7 @@ from urllib.parse import unquote, parse_qs, urlparse
 from selenium.webdriver.common.action_chains import ActionChains
 import re
 import subprocess
+import shutil
 
 class FacebookAdScraper:
     def __init__(self, quiet_mode=True):
@@ -42,6 +43,11 @@ class FacebookAdScraper:
                 raise Exception("No internet connection detected. Please check your connection.")
 
             chrome_options = Options()
+            
+            # Set Chrome binary location for cloud environment
+            chrome_path = os.getenv("CHROME_PATH") or shutil.which("chromium") or shutil.which("chromium-browser")
+            if chrome_path:
+                chrome_options.binary_location = chrome_path
             
             # Cloud-specific options
             chrome_options.add_argument('--headless')
