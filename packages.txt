@@ -1,2 +1,5 @@
-chromium-chromedriver
-xvfb 
+chromium
+xvfb
+libnss3
+libgconf-2-4
+libfontconfig1 
