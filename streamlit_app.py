@@ -239,15 +239,15 @@ def show_main_app():
                         help="Enter URL pattern to match (e.g., https://example.com)"
                     )
                 with col2:
-                    if len(st.session_state.url_patterns) > 1 and st.button("Remove", key=f"remove_{i}"):
+                    remove_clicked = st.form_submit_button("Remove", key=f"remove_{i}")
+                    if remove_clicked:
                         remove_url_pattern(i)
-                        st.form_submit_button("Search Ads")  # Rerun the form
         
-        if st.button("Add URL Pattern"):
+        add_clicked = st.form_submit_button("Add URL Pattern", key="add_pattern")
+        if add_clicked:
             add_url_pattern()
-            st.form_submit_button("Search Ads")  # Rerun the form
         
-        submitted = st.form_submit_button("Search Ads")
+        submitted = st.form_submit_button("Search Ads", key="search_submit")
 
     # Handle search submission
     if submitted and search_term:
