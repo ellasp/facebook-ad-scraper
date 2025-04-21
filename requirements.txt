@@ -1,11 +1,15 @@
-streamlit>=1.28.0
-pandas>=2.0.0
-selenium>=4.15.0
-webdriver-manager>=4.0.0
-python-dotenv>=1.0.0
-beautifulsoup4>=4.12.0
-# Chrome dependencies for cloud
-chromedriver-binary-auto
-selenium-stealth
+streamlit==1.28.0
+pandas==2.0.3
+selenium==4.15.2
+webdriver-manager==4.0.1
+python-dotenv==1.0.0
+beautifulsoup4==4.12.2
+requests==2.31.0
+urllib3==2.0.7
+python-slugify==8.0.1
+selenium-wire==5.1.5
+undetected-chromedriver==3.5.3
 # Additional utilities
-python-slugify>=8.0.1 
+# Chrome dependencies for cloud
+# Remove chromedriver-binary-auto as it might cause issues
+# Remove selenium-stealth as undetected-chromedriver provides better functionality 
