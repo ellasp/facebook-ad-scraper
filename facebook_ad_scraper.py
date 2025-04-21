@@ -18,6 +18,7 @@ import socket
 from urllib.parse import unquote, parse_qs, urlparse
 from selenium.webdriver.common.action_chains import ActionChains
 import re
+import subprocess
 
 class FacebookAdScraper:
     def __init__(self, quiet_mode=True):
@@ -67,10 +68,14 @@ class FacebookAdScraper:
             
             # Use chromedriver-binary-auto for cloud compatibility
             from selenium.webdriver.chrome.service import Service as ChromeService
-            from subprocess import CREATE_NO_WINDOW
+            # Use CREATE_NO_WINDOW on Windows, fallback to 0 on other platforms
+            try:
+                creation_flag = subprocess.CREATE_NO_WINDOW
+            except AttributeError:
+                creation_flag = 0
             
             service = ChromeService()
-            service.creation_flags = CREATE_NO_WINDOW
+            service.creation_flags = creation_flag
             
             if not self.quiet_mode:
                 print("Starting Chrome browser...")
