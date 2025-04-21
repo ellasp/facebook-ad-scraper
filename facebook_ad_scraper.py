@@ -63,7 +63,19 @@ class FacebookAdScraper:
             if chrome_path:
                 chrome_options.binary_location = chrome_path
             else:
-                print("Warning: Chrome/Chromium binary not found; default binary_location not set")
+                print("Warning: Chrome/Chromium binary not found; falling back to Firefox")
+                # Fallback to Firefox if Chrome is unavailable
+                from selenium.webdriver.firefox.options import Options as FirefoxOptions
+                from selenium.webdriver.firefox.service import Service as FirefoxService
+                firefox_options = FirefoxOptions()
+                firefox_options.headless = True
+                gecko_path = shutil.which("geckodriver") or "/usr/bin/geckodriver"
+                service = FirefoxService(executable_path=gecko_path)
+                self.driver = webdriver.Firefox(service=service, options=firefox_options)
+                # Set timeouts for Firefox
+                self.driver.set_page_load_timeout(30)
+                self.driver.implicitly_wait(10)
+                return
             
             # Cloud-specific options
             chrome_options.add_argument('--headless')

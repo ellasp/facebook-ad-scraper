@@ -1,4 +1,4 @@
-chromium-browser
+chromium
 xvfb
 libnss3
 libgconf-2-4
