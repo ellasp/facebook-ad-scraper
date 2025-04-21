@@ -213,9 +213,14 @@ def show_main_app():
         watch_words_input = st.text_area(
             "Watch Words (one per line)",
             value="swimsuit\nunderwear\nlingerie\ndating\nlabiaplasty\nmassage\nbreast",
+            key="watch_words_input",
             help="Enter words to flag in ad content"
         )
-        watch_words = watch_words_input.split('\n') if watch_words_input is not None else []
+        # Ensure splitting only when input is a non-empty string
+        if isinstance(watch_words_input, str) and watch_words_input:
+            watch_words = watch_words_input.split('\n')
+        else:
+            watch_words = []
         
         if st.button("Reset Scraper"):
             initialize_scraper()
