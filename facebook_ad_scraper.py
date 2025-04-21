@@ -74,7 +74,9 @@ class FacebookAdScraper:
             except AttributeError:
                 creation_flag = 0
             
-            service = ChromeService()
+            # Install and use a matching ChromeDriver via webdriver-manager
+            driver_path = ChromeDriverManager().install()
+            service = ChromeService(executable_path=driver_path)
             service.creation_flags = creation_flag
             
             if not self.quiet_mode:
