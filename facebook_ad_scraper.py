@@ -44,10 +44,26 @@ class FacebookAdScraper:
 
             chrome_options = Options()
             
-            # Set Chrome binary location for cloud environment
-            chrome_path = os.getenv("CHROME_PATH") or shutil.which("chromium") or shutil.which("chromium-browser")
+            # Determine Chrome/Chromium binary location for cloud environment
+            chrome_path = os.getenv("CHROME_PATH")
+            # Try common binary names
+            if not chrome_path:
+                for exe in ("chromium", "chromium-browser"):  
+                    path = shutil.which(exe)
+                    if path:
+                        chrome_path = path
+                        break
+            # Try common install paths
+            if not chrome_path:
+                for path in ("/usr/bin/chromium", "/usr/bin/chromium-browser"):  
+                    if os.path.exists(path):
+                        chrome_path = path
+                        break
+            # Only set binary_location if found
             if chrome_path:
                 chrome_options.binary_location = chrome_path
+            else:
+                print("Warning: Chrome/Chromium binary not found; default binary_location not set")
             
             # Cloud-specific options
             chrome_options.add_argument('--headless')
