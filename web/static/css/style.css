@@ -1,0 +1,139 @@
+body {
+    background-color: #f8f9fa;
+}
+
+.card {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.result-item {
+    height: 100%;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 15px;
+    background-color: white;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.result-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.url-pattern-group {
+    position: relative;
+}
+
+.remove-url {
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.url-pattern-group:hover .remove-url {
+    opacity: 1;
+}
+
+#loading {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(255, 255, 255, 0.9);
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    z-index: 1000;
+}
+
+.btn-primary {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.btn-primary:hover {
+    background-color: #0b5ed7;
+    border-color: #0a58ca;
+}
+
+.result-url {
+    word-break: break-all;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.library-link {
+    color: #0d6efd;
+    text-decoration: none;
+    display: inline-block;
+    margin-bottom: 8px;
+}
+
+.library-link:hover {
+    text-decoration: underline;
+}
+
+.alert {
+    margin-top: 20px;
+}
+
+.ad-text {
+    font-size: 14px;
+    line-height: 1.4;
+    margin-top: 10px;
+    max-height: 100px;
+    overflow-y: auto;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.table th, .table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+.table tr:hover {
+    background-color: #f5f5f5;
+}
+
+.table a {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.table a:hover {
+    text-decoration: underline;
+}
+
+.error {
+    color: #dc3545;
+    text-align: center;
+    padding: 20px;
+}
+
+.table td {
+    vertical-align: middle;
+    word-wrap: break-word;
+    max-width: 200px;  /* Limit width to force wrapping */
+}
+
+.table td a {
+    word-break: break-all;  /* Break long URLs at any character */
+    display: inline-block;  /* Allow the link to wrap */
+    max-width: 100%;       /* Take full width of the cell */
+}
+
+/* Keep image column from being affected by max-width */
+.table td:first-child {
+    max-width: none;
+    width: 120px;  /* Fixed width for image column */
+} 
