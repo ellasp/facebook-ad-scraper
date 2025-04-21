@@ -210,11 +210,12 @@ def show_main_app():
             logout_user()
             st.rerun()
             
-        watch_words = st.text_area(
+        watch_words_input = st.text_area(
             "Watch Words (one per line)",
             value="swimsuit\nunderwear\nlingerie\ndating\nlabiaplasty\nmassage\nbreast",
             help="Enter words to flag in ad content"
-        ).split('\n')
+        )
+        watch_words = watch_words_input.split('\n') if watch_words_input is not None else []
         
         if st.button("Reset Scraper"):
             initialize_scraper()
