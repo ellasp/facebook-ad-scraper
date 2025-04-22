@@ -239,7 +239,7 @@ def show_main_app():
                 add_url_pattern()
             submitted = st.form_submit_button("Search Ads")
         if submitted and search_term:
-            # Update the scraper with any watch words and perform the single-search
+            # Update the scraper with watch words and perform the single ad search
             st.session_state.scraper.set_watch_words(watch_words)
             with st.spinner(f"Searching for ads for '{search_term}'..."):
                 try:
