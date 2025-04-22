@@ -9,4 +9,6 @@ urllib3<2.0.0
 python-slugify==8.0.1
 # Removing potentially problematic dependencies
 # selenium-wire and undetected-chromedriver can cause issues in cloud environments
-# Will use basic selenium with appropriate options instead 
+# Will use basic selenium with appropriate options instead
+# Excel support for pandas
+openpyxl>=3.0.10 
