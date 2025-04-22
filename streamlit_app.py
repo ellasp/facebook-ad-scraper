@@ -202,6 +202,9 @@ def show_main_app():
     """Show the main application."""
     st.title("Facebook Ad Scraper")
     st.markdown("Search and analyze Facebook ads with custom URL matching")
+    # Ensure scraper instance exists before any scraping operations
+    if st.session_state.scraper is None:
+        initialize_scraper()
     # Create tabs for single search and bulk upload
     tab_search, tab_bulk = st.tabs(["Search Ads", "Bulk Upload"])
 
