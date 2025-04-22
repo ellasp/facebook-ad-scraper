@@ -111,24 +111,30 @@ class FacebookAdScraper:
             except AttributeError:
                 creation_flag = 0
             
-            # Try to install ChromeDriver via webdriver-manager, fallback to local chromedriver if it fails
-            try:
-                driver_path = ChromeDriverManager().install()
-            except Exception as e:
-                if not self.quiet_mode:
-                    print(f"Warning: webdriver-manager failed ({e}), falling back to local chromedriver")
-                # Look for system-installed chromedriver in common locations
-                candidate_paths = [
-                    shutil.which("chromedriver"),
-                    shutil.which("chromium-chromedriver"),
-                    "/usr/bin/chromedriver",
-                    "/usr/lib/chromium-browser/chromedriver",
-                    "/usr/lib/chromium/chromedriver"
-                ]
-                # Select the first existing path
-                driver_path = next((p for p in candidate_paths if p and os.path.exists(p)), None)
-                if not driver_path:
-                    raise Exception("ChromeDriverManager install failed and no local chromedriver found at expected paths")
+            # First try to use a system-installed chromedriver (e.g., from Debian 'chromium-driver' package)
+            system_driver = shutil.which("chromedriver") or "/usr/bin/chromedriver"
+            if system_driver and os.path.exists(system_driver):
+                driver_path = system_driver
+            else:
+                # Fallback to webdriver-manager installation
+                try:
+                    driver_path = ChromeDriverManager().install()
+                except Exception as e:
+                    if not self.quiet_mode:
+                        print(f"Warning: webdriver-manager failed ({e}), falling back to local chromedriver paths")
+                    # Extended fallback paths for Debian 'chromium-driver'
+                    candidate_paths = [
+                        shutil.which("chromium-driver"),
+                        shutil.which("chromedriver"),
+                        shutil.which("chromium-chromedriver"),
+                        "/usr/bin/chromedriver",
+                        "/usr/lib/chromium-browser/chromedriver",
+                        "/usr/lib/chromium/chromedriver",
+                        "/usr/lib/chromium-driver/chromedriver"
+                    ]
+                    driver_path = next((p for p in candidate_paths if p and os.path.exists(p)), None)
+                    if not driver_path:
+                        raise Exception("No chromedriver found via webdriver-manager or local apt package")
             service = ChromeService(executable_path=driver_path)
             service.creation_flags = creation_flag
             
