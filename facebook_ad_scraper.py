@@ -108,8 +108,16 @@ class FacebookAdScraper:
             except AttributeError:
                 creation_flag = 0
             
-            # Install and use a matching ChromeDriver via webdriver-manager
-            driver_path = ChromeDriverManager().install()
+            # Try to install ChromeDriver via webdriver-manager, fallback to local chromedriver if it fails
+            try:
+                driver_path = ChromeDriverManager().install()
+            except Exception as e:
+                if not self.quiet_mode:
+                    print(f"Warning: webdriver-manager failed ({e}), falling back to local chromedriver")
+                # Look for system-installed chromedriver
+                driver_path = shutil.which("chromedriver") or shutil.which("chromium-chromedriver") or "/usr/bin/chromedriver"
+                if not driver_path:
+                    raise Exception("ChromeDriverManager install failed and no local chromedriver found")
             service = ChromeService(executable_path=driver_path)
             service.creation_flags = creation_flag
             
