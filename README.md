@@ -25,6 +25,16 @@ streamlit run streamlit_app.py
 
 ## Cloud Deployment
 
+- ### System Dependencies (Streamlit Cloud)
+- Streamlit Cloud supports installing system packages via an `apt.txt` file at the root of your repository. Create an `apt.txt` file with the following packages:
+-   - chromium
+-   - chromium-chromedriver
+-   - google-chrome-stable
+-   - google-chrome
+-   - libnss3
+-   - libgconf-2-4
+-   - libfontconfig1
+-
 ### Deploy to Streamlit Cloud
 
 1. Push your code to a GitHub repository

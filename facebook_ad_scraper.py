@@ -44,18 +44,21 @@ class FacebookAdScraper:
 
             chrome_options = Options()
             
+            # Load environment variables for CHROME_PATH from .env if present
+            load_dotenv()
+            
             # Determine Chrome/Chromium binary location for cloud environment
             chrome_path = os.getenv("CHROME_PATH")
-            # Try common binary names
+            # Try common binary names (including Google Chrome)
             if not chrome_path:
-                for exe in ("chromium", "chromium-browser"):  
+                for exe in ("google-chrome-stable", "google-chrome", "google-chrome-beta", "chromium", "chromium-browser"):
                     path = shutil.which(exe)
                     if path:
                         chrome_path = path
                         break
             # Try common install paths
             if not chrome_path:
-                for path in ("/usr/bin/chromium", "/usr/bin/chromium-browser"):  
+                for path in ("/usr/bin/google-chrome-stable", "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"):
                     if os.path.exists(path):
                         chrome_path = path
                         break
@@ -114,10 +117,18 @@ class FacebookAdScraper:
             except Exception as e:
                 if not self.quiet_mode:
                     print(f"Warning: webdriver-manager failed ({e}), falling back to local chromedriver")
-                # Look for system-installed chromedriver
-                driver_path = shutil.which("chromedriver") or shutil.which("chromium-chromedriver") or "/usr/bin/chromedriver"
+                # Look for system-installed chromedriver in common locations
+                candidate_paths = [
+                    shutil.which("chromedriver"),
+                    shutil.which("chromium-chromedriver"),
+                    "/usr/bin/chromedriver",
+                    "/usr/lib/chromium-browser/chromedriver",
+                    "/usr/lib/chromium/chromedriver"
+                ]
+                # Select the first existing path
+                driver_path = next((p for p in candidate_paths if p and os.path.exists(p)), None)
                 if not driver_path:
-                    raise Exception("ChromeDriverManager install failed and no local chromedriver found")
+                    raise Exception("ChromeDriverManager install failed and no local chromedriver found at expected paths")
             service = ChromeService(executable_path=driver_path)
             service.creation_flags = creation_flag
             
