@@ -897,6 +897,41 @@ class FacebookAdScraper:
         
         return matching_urls
 
+    def scrape_ad_by_link(self, ad_link: str) -> Optional[Dict]:
+        """Scrape a single Facebook Ad Library ad given its URL."""
+        # Ensure WebDriver is ready
+        if not self.ensure_driver_active():
+            self.setup_driver()
+        try:
+            # Navigate to the ad link
+            self.driver.get(ad_link)
+            time.sleep(5)  # Wait for the page to load
+            # Wait for the ad container to appear
+            ad_element = WebDriverWait(self.driver, 20).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "div[role='article']"))
+            )
+            # Extract ad text
+            ad_text = ad_element.text or ""
+            # Parse library ID from the URL query parameters
+            parsed = urlparse(ad_link)
+            params = parse_qs(parsed.query)
+            library_id = params.get('id', [None])[0]
+            # Extract image URL
+            image_url = self._extract_image_url(ad_element)
+            # Build ad info dictionary
+            return {
+                'ad_text': ad_text,
+                'library_id': library_id,
+                'urls': [ad_link],
+                'original_urls': [ad_link],
+                'library_page': ad_link,
+                'image_url': image_url,
+                'ad_page_url': ad_link
+            }
+        except Exception as e:
+            print(f"Error scraping ad by link {ad_link}: {e}")
+            return None
+
 def main():
     # Example usage
     scraper = None
