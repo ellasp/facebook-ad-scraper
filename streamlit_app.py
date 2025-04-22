@@ -239,8 +239,25 @@ def show_main_app():
                 add_url_pattern()
             submitted = st.form_submit_button("Search Ads")
         if submitted and search_term:
-            # existing search handling...
-            pass
+            # Update the scraper with any watch words and perform the single-search
+            st.session_state.scraper.set_watch_words(watch_words)
+            with st.spinner(f"Searching for ads for '{search_term}'..."):
+                try:
+                    results = st.session_state.scraper.search_ads(search_term, st.session_state.url_patterns)
+                except Exception as e:
+                    st.error(f"Error during search: {e}")
+                    results = []
+            if results:
+                df = pd.DataFrame(results)
+                st.success(f"Found {len(results)} ads")
+                st.dataframe(df)
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown(create_download_link(df, f"search_ads_{st.session_state.user_id}", "csv"), unsafe_allow_html=True)
+                with col2:
+                    st.markdown(create_download_link(df, f"search_ads_{st.session_state.user_id}", "json"), unsafe_allow_html=True)
+            else:
+                st.warning("No ads found for this search")
 
     with tab_bulk:
         st.subheader("Bulk Upload Ads from File")
