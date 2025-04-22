@@ -20,6 +20,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 import re
 import subprocess
 import shutil
+import requests
 
 class FacebookAdScraper:
     def __init__(self, quiet_mode=True):
@@ -223,32 +224,29 @@ class FacebookAdScraper:
 
     def get_final_url(self, url: str) -> str:
         """Get the final URL after any redirects."""
+        # First attempt: use requests to follow redirects without a browser
+        try:
+            response = requests.get(url, allow_redirects=True, timeout=10)
+            if response.url:
+                return response.url
+        except Exception:
+            pass
+        # Fallback: use Selenium navigation in the same window
         try:
             if not self.ensure_driver_active():
                 self.setup_driver()
-            
-            # Store the current window handle
-            original_window = self.driver.current_window_handle
-            
-            # Open URL in a new tab
-            self.driver.execute_script(f"window.open('{url}', '_blank');")
-            time.sleep(2)
-            
-            # Switch to the new tab
-            new_window = [window for window in self.driver.window_handles if window != original_window][0]
-            self.driver.switch_to.window(new_window)
-            
-            # Wait for the page to load and get the final URL
+            previous_url = self.driver.current_url
+            self.driver.get(url)
             time.sleep(5)
             final_url = self.driver.current_url
-            
-            # Close the new tab and switch back to original window
-            self.driver.close()
-            self.driver.switch_to.window(original_window)
-            
+            # Navigate back to where we were
+            try:
+                self.driver.get(previous_url)
+            except:
+                pass
             return final_url
         except Exception as e:
-            print(f"Error getting final URL: {str(e)}")
+            print(f"Error getting final URL: {e}")
             return url
         
     def set_watch_words(self, words: List[str]):
