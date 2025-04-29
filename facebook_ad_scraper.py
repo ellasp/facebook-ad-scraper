@@ -194,43 +194,36 @@ class FacebookAdScraper:
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                if not self.ensure_driver_active():
-                    self.setup_driver()
-                
-                # Try to access Facebook
-                print("Attempting to access Facebook...")
-                self.driver.get("https://www.facebook.com")
-                time.sleep(5)  # Wait for page to load
-                
-                # Check if we need to log in
-                if "login" in self.driver.current_url.lower():
-                    # Attempt automated login if credentials provided
+                # Navigate to the Facebook login page
+                print("Attempting to access Facebook login page...")
+                self.driver.get("https://www.facebook.com/login")
+                time.sleep(5)
+                # Detect login form by presence of the email input
+                try:
+                    email_input = self.driver.find_element(By.ID, "email")
+                except:
+                    email_input = None
+                if email_input:
+                    # Use environment variables to login
                     email = os.getenv("FB_EMAIL")
                     password = os.getenv("FB_PASSWORD")
                     if email and password:
                         if not self.quiet_mode:
-                            print("Automated login using environment credentials...")
-                        email_input = self.driver.find_element(By.ID, "email")
+                            print("Automated login using FB_EMAIL and FB_PASSWORD...")
                         pass_input = self.driver.find_element(By.ID, "pass")
                         email_input.clear()
                         email_input.send_keys(email)
                         pass_input.clear()
                         pass_input.send_keys(password)
                         pass_input.send_keys(Keys.RETURN)
-                        time.sleep(5)
+                        time.sleep(5)  # wait for authentication
                     else:
-                        print("Please log in to Facebook in this browser window.")
-                        print("You have 60 seconds to complete the login...")
+                        print("Login form detected but FB_EMAIL/FB_PASSWORD not set. Please log in manually.")
                         time.sleep(60)
-                    # After login, navigate to Ad Library
-                    print("Navigating to Ad Library after login...")
-                    self.driver.get("https://www.facebook.com/ads/library/")
-                    time.sleep(5)
-                    # Check if we're still on login page
-                    if "login" in self.driver.current_url.lower():
-                        raise Exception("Login failed or timed out")
+                else:
+                    if not self.quiet_mode:
+                        print("No login form detected; assuming already authenticated.")
                 return True
-                    
             except Exception as e:
                 print(f"Error during login attempt {attempt + 1}/{max_retries}: {str(e)}")
                 if attempt < max_retries - 1:
@@ -558,15 +551,18 @@ class FacebookAdScraper:
                 search_url = f"https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=US&q={url_quote(search_term)}"
                 print(f"Navigating to Facebook Ad Library search for '{search_term}'...")
                 self.driver.get(search_url)
-                # Wait for search results to load
-                time.sleep(5)
-                print("Waiting for search results to load...")
-                WebDriverWait(self.driver, 20).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, "div[role='main']"))
-                )
-                # Additional wait to ensure all ads are loaded
-                time.sleep(5)
-                print("Search results loaded successfully")
+                # Wait for ad cards/articles to load (could be div[role='article'] or data-testid ad_card)
+                print("Waiting for ad elements to appear...")
+                try:
+                    WebDriverWait(self.driver, 30).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, "div[role='article'], div[data-testid='ad_card']"))
+                    )
+                except TimeoutException:
+                    # Dump a snippet of page source for debugging
+                    snippet = self.driver.page_source[:1000]
+                    print("Debug: first 1000 chars of page source after timeout:\n", snippet)
+                    raise
+                print("Ad elements detected, proceeding...")
                 
                 # Scroll to load more ads
                 print("Scrolling to load more ads...")
