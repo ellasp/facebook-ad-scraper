@@ -204,15 +204,28 @@ class FacebookAdScraper:
                 
                 # Check if we need to log in
                 if "login" in self.driver.current_url.lower():
-                    print("Please log in to Facebook in the browser window that opened.")
-                    print("You have 60 seconds to complete the login...")
-                    time.sleep(60)  # Give user time to log in
-                    
+                    # Attempt automated login if credentials provided
+                    email = os.getenv("FB_EMAIL")
+                    password = os.getenv("FB_PASSWORD")
+                    if email and password:
+                        if not self.quiet_mode:
+                            print("Automated login using environment credentials...")
+                        email_input = self.driver.find_element(By.ID, "email")
+                        pass_input = self.driver.find_element(By.ID, "pass")
+                        email_input.clear()
+                        email_input.send_keys(email)
+                        pass_input.clear()
+                        pass_input.send_keys(password)
+                        pass_input.send_keys(Keys.RETURN)
+                        time.sleep(5)
+                    else:
+                        print("Please log in to Facebook in this browser window.")
+                        print("You have 60 seconds to complete the login...")
+                        time.sleep(60)
                     # After login, navigate to Ad Library
                     print("Navigating to Ad Library after login...")
                     self.driver.get("https://www.facebook.com/ads/library/")
-                    time.sleep(5)  # Wait for page to load
-                    
+                    time.sleep(5)
                     # Check if we're still on login page
                     if "login" in self.driver.current_url.lower():
                         raise Exception("Login failed or timed out")
@@ -537,12 +550,7 @@ class FacebookAdScraper:
                 if not self.login_to_facebook():
                     raise Exception("Failed to log in to Facebook")
                 
-                # Open a new tab for the Ad Library search
-                original_window = self.driver.current_window_handle
-                self.driver.execute_script("window.open();")
-                new_window = [w for w in self.driver.window_handles if w != original_window][-1]
-                self.driver.switch_to.window(new_window)
-                # Directly navigate to Ad Library search URL for the search term
+                # Navigate to Ad Library search URL for the search term
                 try:
                     from urllib.parse import quote as url_quote
                 except ImportError:
@@ -755,12 +763,7 @@ class FacebookAdScraper:
                     print(f"Error during analysis: {str(e)}")
                 
                 print("\nAnalysis complete")
-                # Close the search tab and return to original window
-                try:
-                    self.driver.close()
-                except:
-                    pass
-                self.driver.switch_to.window(original_window)
+                # Return collected ads in the same window
                 return collected_ads
                     
             except TimeoutException as e:
