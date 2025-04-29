@@ -204,22 +204,26 @@ class FacebookAdScraper:
                 except:
                     email_input = None
                 if email_input:
-                    # Use environment variables to login
+                    # Use environment variables for automated login
                     email = os.getenv("FB_EMAIL")
                     password = os.getenv("FB_PASSWORD")
-                    if email and password:
-                        if not self.quiet_mode:
-                            print("Automated login using FB_EMAIL and FB_PASSWORD...")
-                        pass_input = self.driver.find_element(By.ID, "pass")
-                        email_input.clear()
-                        email_input.send_keys(email)
-                        pass_input.clear()
-                        pass_input.send_keys(password)
-                        pass_input.send_keys(Keys.RETURN)
-                        time.sleep(5)  # wait for authentication
-                    else:
-                        print("Login form detected but FB_EMAIL/FB_PASSWORD not set. Please log in manually.")
-                        time.sleep(60)
+                    # If credentials missing, allow manual login in a visible browser
+                    if not email or not password:
+                        headless_env = os.getenv('HEADLESS', 'true').lower()
+                        if headless_env in ['1', 'true', 'yes']:
+                            raise Exception("FB_EMAIL and FB_PASSWORD must be set in environment for headless mode.")
+                        print("Login form detected but FB_EMAIL/FB_PASSWORD not set. Please log in manually in the browser window.")
+                        input("After completing manual login, press Enter to continue...")
+                        return True
+                    if not self.quiet_mode:
+                        print("Automated login using FB_EMAIL and FB_PASSWORD...")
+                    pass_input = self.driver.find_element(By.ID, "pass")
+                    email_input.clear()
+                    email_input.send_keys(email)
+                    pass_input.clear()
+                    pass_input.send_keys(password)
+                    pass_input.send_keys(Keys.RETURN)
+                    time.sleep(5)  # wait for authentication
                 else:
                     if not self.quiet_mode:
                         print("No login form detected; assuming already authenticated.")
@@ -543,13 +547,17 @@ class FacebookAdScraper:
                 if not self.login_to_facebook():
                     raise Exception("Failed to log in to Facebook")
                 
-                # Navigate to Ad Library search URL for the search term
+                # Navigate directly to Ad Library search results with user-provided query
                 try:
                     from urllib.parse import quote as url_quote
                 except ImportError:
                     from requests.utils import quote as url_quote
-                # Search across all geographies by omitting the country filter
-                search_url = f"https://www.facebook.com/ads/library/?active_status=all&ad_type=all&q={url_quote(search_term)}"
+                # Build search URL with active ads, all ad types, all geos, all media, and keyword-unordered search
+                search_url = (
+                    "https://www.facebook.com/ads/library/"
+                    f"?active_status=active&ad_type=all&country=ALL&is_targeted_country=false"
+                    f"&media_type=all&q={url_quote(search_term)}&search_type=keyword_unordered"
+                )
                 print(f"Navigating to Facebook Ad Library search for '{search_term}'...")
                 self.driver.get(search_url)
                 # Dismiss cookie consent dialog if present
@@ -956,15 +964,10 @@ def main():
     try:
         scraper = FacebookAdScraper()
         
-        # Allow manual filter setup (All geos / All ad types) in the base Ad Library page
-        search_term = input("Enter search term: ")
-        print("Opening Ad Library page for manual filter selection...")
-        scraper.driver.get("https://www.facebook.com/ads/library/")
-        input("Please adjust geographic and ad-type filters on the Ad Library page, then press Enter to continue...")
+        # Prompt user for a search term and start search immediately
+        search_term = input("Enter search term (e.g., commercecrunch.com): ")
         print(f"Starting search for term: {search_term}")
-        print("Analyzing ads in the Facebook Ad Library...")
-        
-        # Get ad information
+        # Directly perform the ad library search without manual filter selection
         ads = scraper.search_ads(search_term)
         
         if not ads:
