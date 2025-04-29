@@ -81,8 +81,13 @@ class FacebookAdScraper:
                 self.driver.implicitly_wait(10)
                 return
             
-            # Cloud-specific options
-            chrome_options.add_argument('--headless')
+            # Cloud-specific options (conditional headless)
+            headless_env = os.getenv('HEADLESS', 'true').lower()
+            if headless_env in ['1', 'true', 'yes']:
+                chrome_options.add_argument('--headless')
+            else:
+                if not self.quiet_mode:
+                    print("Launching Chrome in non-headless mode")
             chrome_options.add_argument('--no-sandbox')
             chrome_options.add_argument('--disable-dev-shm-usage')
             chrome_options.add_argument('--disable-gpu')
@@ -532,53 +537,28 @@ class FacebookAdScraper:
                 if not self.login_to_facebook():
                     raise Exception("Failed to log in to Facebook")
                 
-                # Navigate to Facebook Ad Library
-                print("Navigating to Facebook Ad Library...")
-                self.driver.get("https://www.facebook.com/ads/library/")
-                time.sleep(5)
-                
-                # Wait for the page to be fully loaded
-                print("Waiting for page to load completely...")
-                WebDriverWait(self.driver, 20).until(
-                    EC.presence_of_element_located((By.TAG_NAME, "body"))
-                )
-                
-                # Try to find and click the search box first
-                print("Looking for search box...")
-                search_box = WebDriverWait(self.driver, 20).until(
-                    EC.element_to_be_clickable((By.CSS_SELECTOR, "input[type='search']"))
-                )
-                print("Found search box, entering search term...")
-                
-                # Clear the search box and enter the search term
-                search_box.clear()
-                time.sleep(1)
-                search_box.send_keys(search_term)
-                time.sleep(1)
-                
-                # Press Enter instead of submit
-                search_box.send_keys(Keys.RETURN)
-                time.sleep(5)
-                
-                # Wait for search results to load
-                print("Waiting for search results to load...")
+                # Open a new tab for the Ad Library search
+                original_window = self.driver.current_window_handle
+                self.driver.execute_script("window.open();")
+                new_window = [w for w in self.driver.window_handles if w != original_window][-1]
+                self.driver.switch_to.window(new_window)
+                # Directly navigate to Ad Library search URL for the search term
                 try:
-                    # Wait for any loading indicators to disappear
-                    WebDriverWait(self.driver, 20).until(
-                        lambda driver: not driver.find_elements(By.CSS_SELECTOR, "[role='progressbar']")
-                    )
-                    
-                    # Wait for the search results container
-                    WebDriverWait(self.driver, 20).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, "div[role='main']"))
-                    )
-                    
-                    # Additional wait to ensure all ads are loaded
-                    time.sleep(5)
-                    
-                    print("Search results loaded successfully")
-                except TimeoutException:
-                    print("Warning: Search results might not have loaded completely")
+                    from urllib.parse import quote as url_quote
+                except ImportError:
+                    from requests.utils import quote as url_quote
+                search_url = f"https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=US&q={url_quote(search_term)}"
+                print(f"Navigating to Facebook Ad Library search for '{search_term}'...")
+                self.driver.get(search_url)
+                # Wait for search results to load
+                time.sleep(5)
+                print("Waiting for search results to load...")
+                WebDriverWait(self.driver, 20).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "div[role='main']"))
+                )
+                # Additional wait to ensure all ads are loaded
+                time.sleep(5)
+                print("Search results loaded successfully")
                 
                 # Scroll to load more ads
                 print("Scrolling to load more ads...")
@@ -775,6 +755,12 @@ class FacebookAdScraper:
                     print(f"Error during analysis: {str(e)}")
                 
                 print("\nAnalysis complete")
+                # Close the search tab and return to original window
+                try:
+                    self.driver.close()
+                except:
+                    pass
+                self.driver.switch_to.window(original_window)
                 return collected_ads
                     
             except TimeoutException as e:
