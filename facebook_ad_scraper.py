@@ -552,6 +552,13 @@ class FacebookAdScraper:
                 search_url = f"https://www.facebook.com/ads/library/?active_status=all&ad_type=all&q={url_quote(search_term)}"
                 print(f"Navigating to Facebook Ad Library search for '{search_term}'...")
                 self.driver.get(search_url)
+                # Dismiss cookie consent dialog if present
+                try:
+                    cookie_btn = self.driver.find_element(By.XPATH, "//button[contains(text(),'Accept') and contains(text(),'Cookies')]")
+                    cookie_btn.click()
+                    time.sleep(1)
+                except:
+                    pass
                 # Wait for ad cards/articles to load (could be div[role='article'] or data-testid ad_card)
                 print("Waiting for ad elements to appear...")
                 try:
