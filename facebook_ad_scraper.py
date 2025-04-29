@@ -548,7 +548,8 @@ class FacebookAdScraper:
                     from urllib.parse import quote as url_quote
                 except ImportError:
                     from requests.utils import quote as url_quote
-                search_url = f"https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=US&q={url_quote(search_term)}"
+                # Search across all geographies by omitting the country filter
+                search_url = f"https://www.facebook.com/ads/library/?active_status=all&ad_type=all&q={url_quote(search_term)}"
                 print(f"Navigating to Facebook Ad Library search for '{search_term}'...")
                 self.driver.get(search_url)
                 # Wait for ad cards/articles to load (could be div[role='article'] or data-testid ad_card)
@@ -557,11 +558,13 @@ class FacebookAdScraper:
                     WebDriverWait(self.driver, 30).until(
                         EC.presence_of_element_located((By.CSS_SELECTOR, "div[role='article'], div[data-testid='ad_card']"))
                     )
-                except TimeoutException:
-                    # Dump a snippet of page source for debugging
-                    snippet = self.driver.page_source[:1000]
-                    print("Debug: first 1000 chars of page source after timeout:\n", snippet)
-                    raise
+                except TimeoutException as e:
+                    # Dump a longer snippet of page source for debugging
+                    snippet = self.driver.page_source[:2000]
+                    if not self.quiet_mode:
+                        print("Debug: first 2000 chars of page source after timeout:\n", snippet)
+                    # Raise a descriptive exception including the snippet
+                    raise Exception(f"Timeout waiting for ad elements. Page source snippet:\n{snippet}") from e
                 print("Ad elements detected, proceeding...")
                 
                 # Scroll to load more ads
@@ -946,8 +949,11 @@ def main():
     try:
         scraper = FacebookAdScraper()
         
+        # Allow manual filter setup (All geos / All ad types) in the base Ad Library page
         search_term = input("Enter search term: ")
-        
+        print("Opening Ad Library page for manual filter selection...")
+        scraper.driver.get("https://www.facebook.com/ads/library/")
+        input("Please adjust geographic and ad-type filters on the Ad Library page, then press Enter to continue...")
         print(f"Starting search for term: {search_term}")
         print("Analyzing ads in the Facebook Ad Library...")
         
