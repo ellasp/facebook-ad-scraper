@@ -557,6 +557,9 @@ class FacebookAdScraper:
                     f"?active_status=active&ad_type=all&country=ALL&is_targeted_country=false"
                     f"&media_type=all&q={url_quote(search_term)}&search_type=keyword_unordered"
                 )
+                # Ensure the WebDriver is active before dynamic search
+                if not self.ensure_driver_active():
+                    self.setup_driver()
                 # Try dynamic search via the input field
                 try:
                     print("Opening Facebook Ad Library...")
@@ -580,6 +583,9 @@ class FacebookAdScraper:
                 except Exception as e:
                     print(f"Dynamic search failed ({str(e)}), falling back to direct URL navigation:")
                     print(f"Using URL: {search_url}")
+                    # Ensure driver is active before navigating to fallback URL
+                    if not self.ensure_driver_active():
+                        self.setup_driver()
                     self.driver.get(search_url)
                 # Wait for ad cards/articles to load (could be div[role='article'] or data-testid ad_card)
                 print("Waiting for ad elements to appear...")
