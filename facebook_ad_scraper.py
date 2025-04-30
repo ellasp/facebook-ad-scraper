@@ -547,27 +547,40 @@ class FacebookAdScraper:
                 if not self.login_to_facebook():
                     raise Exception("Failed to log in to Facebook")
                 
-                # Navigate to Ad Library and perform a dynamic search via the input field
-                print("Opening Facebook Ad Library...")
-                self.driver.get("https://www.facebook.com/ads/library/")
-                # Dismiss cookie consent dialog if present
+                # Prepare fallback search URL (in case dynamic input fails)
                 try:
-                    cookie_btn = self.driver.find_element(By.XPATH, "//button[contains(text(),'Accept') and contains(text(),'Cookies')]")
-                    cookie_btn.click()
-                    time.sleep(1)
-                except:
-                    pass
-                # Wait for search input to appear and submit search term
-                print(f"Searching for term: {search_term}")
-                search_input = WebDriverWait(self.driver, 30).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR,
-                        "input[type='search'], input[placeholder*='Search'], input[aria-label*='Search']"))
+                    from urllib.parse import quote as url_quote
+                except ImportError:
+                    from requests.utils import quote as url_quote
+                search_url = (
+                    "https://www.facebook.com/ads/library/"
+                    f"?active_status=active&ad_type=all&country=ALL&is_targeted_country=false"
+                    f"&media_type=all&q={url_quote(search_term)}&search_type=keyword_unordered"
                 )
-                search_input.clear()
-                search_input.send_keys(search_term)
-                search_input.send_keys(Keys.RETURN)
-                time.sleep(5)
-                
+                # Try dynamic search via the input field
+                try:
+                    print("Opening Facebook Ad Library...")
+                    self.driver.get("https://www.facebook.com/ads/library/")
+                    # Dismiss cookie consent dialog if present
+                    try:
+                        cookie_btn = self.driver.find_element(By.XPATH, "//button[contains(text(),'Accept') and contains(text(),'Cookies')]")
+                        cookie_btn.click()
+                        time.sleep(1)
+                    except:
+                        pass
+                    print(f"Searching for term: {search_term}")
+                    search_input = WebDriverWait(self.driver, 30).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR,
+                            "input[type='search'], input[placeholder*='Search'], input[aria-label*='Search']"))
+                    )
+                    search_input.clear()
+                    search_input.send_keys(search_term)
+                    search_input.send_keys(Keys.RETURN)
+                    time.sleep(5)
+                except Exception as e:
+                    print(f"Dynamic search failed ({str(e)}), falling back to direct URL navigation:")
+                    print(f"Using URL: {search_url}")
+                    self.driver.get(search_url)
                 # Wait for ad cards/articles to load (could be div[role='article'] or data-testid ad_card)
                 print("Waiting for ad elements to appear...")
                 try:
