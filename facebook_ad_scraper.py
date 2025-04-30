@@ -559,6 +559,9 @@ class FacebookAdScraper:
                 )
                 # Navigate directly to the search URL (avoiding dynamic input issues)
                 print(f"Navigating to Facebook Ad Library with URL: {search_url}")
+                # Ensure driver is initialized before navigation
+                if not self.ensure_driver_active():
+                    self.setup_driver()
                 self.driver.get(search_url)
                 time.sleep(5)
                 # Wait for ad cards/articles to load (could be div[role='article'] or data-testid ad_card)
