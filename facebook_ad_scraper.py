@@ -557,41 +557,10 @@ class FacebookAdScraper:
                     f"?active_status=active&ad_type=all&country=ALL&is_targeted_country=false"
                     f"&media_type=all&q={url_quote(search_term)}&search_type=keyword_unordered"
                 )
-                # Ensure the WebDriver is active before dynamic search
-                if not self.ensure_driver_active():
-                    self.setup_driver()
-                # Try dynamic search via the input field
-                try:
-                    print("Opening Facebook Ad Library...")
-                    self.driver.get("https://www.facebook.com/ads/library/")
-                    # Dismiss cookie consent dialog if present
-                    try:
-                        cookie_btn = self.driver.find_element(By.XPATH, "//button[contains(text(),'Accept') and contains(text(),'Cookies')]")
-                        cookie_btn.click()
-                        time.sleep(1)
-                    except:
-                        pass
-                    print(f"Searching for term: {search_term}")
-                    search_input = WebDriverWait(self.driver, 30).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR,
-                            "input[type='search'], input[placeholder*='Search'], input[aria-label*='Search']"))
-                    )
-                    search_input.clear()
-                    search_input.send_keys(search_term)
-                    search_input.send_keys(Keys.RETURN)
-                    time.sleep(5)
-                except Exception as e:
-                    print(f"Dynamic search failed ({str(e)}), falling back to direct URL navigation:")
-                    print(f"Using URL: {search_url}")
-                    # Attempt fallback navigation, retry if driver was None
-                    try:
-                        if not self.ensure_driver_active():
-                            self.setup_driver()
-                        self.driver.get(search_url)
-                    except Exception as fallback_error:
-                        print(f"Fallback navigation failed ({fallback_error}); reinitializing driver and retrying")
-                        self.setup_driver()
-                        self.driver.get(search_url)
+                # Navigate directly to the search URL (avoiding dynamic input issues)
+                print(f"Navigating to Facebook Ad Library with URL: {search_url}")
+                self.driver.get(search_url)
+                time.sleep(5)
                 # Wait for ad cards/articles to load (could be div[role='article'] or data-testid ad_card)
                 print("Waiting for ad elements to appear...")
                 try:
