@@ -583,10 +583,15 @@ class FacebookAdScraper:
                 except Exception as e:
                     print(f"Dynamic search failed ({str(e)}), falling back to direct URL navigation:")
                     print(f"Using URL: {search_url}")
-                    # Ensure driver is active before navigating to fallback URL
-                    if not self.ensure_driver_active():
+                    # Attempt fallback navigation, retry if driver was None
+                    try:
+                        if not self.ensure_driver_active():
+                            self.setup_driver()
+                        self.driver.get(search_url)
+                    except AttributeError:
+                        print("Driver was None; reinitializing driver for fallback URL")
                         self.setup_driver()
-                    self.driver.get(search_url)
+                        self.driver.get(search_url)
                 # Wait for ad cards/articles to load (could be div[role='article'] or data-testid ad_card)
                 print("Waiting for ad elements to appear...")
                 try:
