@@ -34,6 +34,10 @@ class FacebookAdScraper:
             print(f"Watching for the following words: {', '.join(self.watch_words)}")
         load_dotenv()  # Load environment variables
         
+        # Session for HTTP-based requests
+        self.session = None
+        self.http_headers = None
+        
     def setup_driver(self):
         """Set up the Chrome WebDriver with appropriate options."""
         try:
@@ -954,6 +958,21 @@ class FacebookAdScraper:
         except Exception as e:
             print(f"Error scraping ad by link {ad_link}: {e}")
             return None
+
+    def _init_http_session(self):
+        """Initialize an HTTP session using cookies from the Selenium driver."""
+        if not self.session:
+            self.session = requests.Session()
+            # Transfer cookies from Selenium to requests
+            for cookie in self.driver.get_cookies():
+                self.session.cookies.set(
+                    cookie['name'], cookie['value'],
+                    domain=cookie.get('domain'), path=cookie.get('path')
+                )
+            # Grab the User-Agent from the browser
+            ua = self.driver.execute_script("return navigator.userAgent;")
+            self.http_headers = {"User-Agent": ua}
+        return self.session
 
 def main():
     # Example usage
