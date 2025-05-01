@@ -564,9 +564,21 @@ class FacebookAdScraper:
         # Use a simpler search URL to avoid Bad Request errors
         search_url = f"https://www.facebook.com/ads/library/?active_status=all&ad_type=all&media_type=all&q={url_quote(search_term)}"
         print(f"Fetching via HTTP: {search_url}")
-        resp = session.get(search_url, headers=self.http_headers, timeout=30)
-        resp.raise_for_status()
-        soup = BeautifulSoup(resp.text, "html.parser")
+        try:
+            resp = session.get(search_url, headers=self.http_headers, timeout=30)
+            resp.raise_for_status()
+            html_content = resp.text
+        except Exception as fetch_err:
+            print(f"HTTP request failed ({fetch_err}); falling back to Selenium browser rendering")
+            # Ensure driver active and navigate to URL for JS rendering
+            if not self.ensure_driver_active():
+                self.setup_driver()
+                self.login_to_facebook()
+            self.driver.get(search_url)
+            time.sleep(5)
+            html_content = self.driver.page_source
+        # Parse the resulting HTML
+        soup = BeautifulSoup(html_content, "html.parser")
         ad_elements = soup.select("div[role='article'], div[data-testid='ad_card']")
         collected_ads: List[Dict] = []
         for ad_el in ad_elements:
