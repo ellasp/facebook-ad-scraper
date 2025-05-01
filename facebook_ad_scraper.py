@@ -561,11 +561,8 @@ class FacebookAdScraper:
             from urllib.parse import quote as url_quote
         except ImportError:
             from requests.utils import quote as url_quote
-        search_url = (
-            "https://www.facebook.com/ads/library/"
-            f"?active_status=active&ad_type=all&country=ALL&is_targeted_country=false"
-            f"&media_type=all&q={url_quote(search_term)}&search_type=keyword_unordered"
-        )
+        # Use a simpler search URL to avoid Bad Request errors
+        search_url = f"https://www.facebook.com/ads/library/?active_status=all&ad_type=all&media_type=all&q={url_quote(search_term)}"
         print(f"Fetching via HTTP: {search_url}")
         resp = session.get(search_url, headers=self.http_headers, timeout=30)
         resp.raise_for_status()
