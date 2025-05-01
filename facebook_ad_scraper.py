@@ -31,7 +31,7 @@ class FacebookAdScraper:
         # Set predefined watch words
         self.watch_words = ["swimsuit", "underwear", "lingerie", "dating", "labiaplasty", "massage", "breast"]
         if not self.quiet_mode:
-            print(f"Watching for the following words: {', '.join(self.watch_words)}")
+        print(f"Watching for the following words: {', '.join(self.watch_words)}")
         load_dotenv()  # Load environment variables
         
         # Session for HTTP-based requests
@@ -111,7 +111,7 @@ class FacebookAdScraper:
             urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
             
             if not self.quiet_mode:
-                print("Installing ChromeDriver...")
+            print("Installing ChromeDriver...")
             
             # Use chromedriver-binary-auto for cloud compatibility
             from selenium.webdriver.chrome.service import Service as ChromeService
@@ -149,7 +149,7 @@ class FacebookAdScraper:
             service.creation_flags = creation_flag
             
             if not self.quiet_mode:
-                print("Starting Chrome browser...")
+            print("Starting Chrome browser...")
             
             self.driver = webdriver.Chrome(service=service, options=chrome_options)
             
@@ -158,7 +158,7 @@ class FacebookAdScraper:
             self.driver.implicitly_wait(10)
             
             if not self.quiet_mode:
-                print("Chrome WebDriver setup successful")
+            print("Chrome WebDriver setup successful")
             
         except Exception as e:
             print(f"Error setting up Chrome WebDriver: {str(e)}")
@@ -272,7 +272,7 @@ class FacebookAdScraper:
         """Set the list of words to watch for in ads."""
         self.watch_words = [word.lower() for word in words]
         if not self.quiet_mode:
-            print(f"Watching for the following words: {', '.join(self.watch_words)}")
+        print(f"Watching for the following words: {', '.join(self.watch_words)}")
 
     def check_for_watch_words(self, text: str, ad_info: Dict) -> bool:
         """Check if any watch words appear in the text."""
@@ -487,8 +487,8 @@ class FacebookAdScraper:
                                 url_match = re.search(r'url\(["\']?(.*?)["\']?\)', style)
                                 src = url_match.group(1) if url_match else None
                             else:
-                                continue
-
+                                    continue
+                            
                         if src and "fbcdn.net" in src:
                             # Try to get size information
                             try:
@@ -502,8 +502,8 @@ class FacebookAdScraper:
                                 return src
                 except Exception as e:
                     print(f"Error with selector {selector}: {str(e)}")
-                    continue
-
+                                        continue
+                                        
             # Last resort: find all images and try to identify the main creative
             print("\nTrying last resort image search...")
             all_images = ad_element.find_elements(By.TAG_NAME, "img")
@@ -519,17 +519,17 @@ class FacebookAdScraper:
                         if area > largest_size:
                             largest_size = area
                             largest_image = src
-                except:
-                    continue
-
+                                except:
+                                    continue
+                            
             if largest_image:
                 print(f"Found largest image in ad: {largest_image}")
                 return largest_image
 
             print("No suitable creative image found")
             return None
-
-        except Exception as e:
+                            
+                        except Exception as e:
             print(f"\nError extracting image URL: {str(e)}")
             return None
 
@@ -588,7 +588,7 @@ class FacebookAdScraper:
                 "image_url": image_url,
                 "ad_page_url": None
             })
-        return collected_ads
+                return collected_ads
 
     def _scroll_to_load_more(self):
         """Scroll the page to load more ads."""
