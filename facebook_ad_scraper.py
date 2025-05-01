@@ -550,6 +550,12 @@ class FacebookAdScraper:
         if not self.login_to_facebook():
             raise Exception("Failed to log in to Facebook for HTTP scraping")
         session = self._init_http_session()
+        # Ensure HTTP session is valid
+        if session is None:
+            print("HTTP session initialization returned None; retrying...")
+            session = self._init_http_session()
+            if session is None:
+                raise Exception("Failed to initialize HTTP session; cannot perform HTTP requests")
         # Build search URL
         try:
             from urllib.parse import quote as url_quote
@@ -572,7 +578,12 @@ class FacebookAdScraper:
             if not link_tag:
                 continue
             original_url = link_tag["href"]
-            final_url = self.get_final_url(original_url)
+            # Resolve redirects via HTTP to avoid Selenium fallback and driver issues
+            try:
+                head_resp = session.head(original_url, headers=self.http_headers, allow_redirects=True, timeout=10)
+                final_url = head_resp.url
+            except Exception:
+                final_url = original_url
             # Filter by patterns
             if url_patterns:
                 if not any(self._urls_match(final_url, p) for p in url_patterns if p):
