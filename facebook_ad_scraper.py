@@ -538,271 +538,65 @@ class FacebookAdScraper:
         Search for ads in Facebook Ad Library and collect their details including images.
         First checks if URLs match before collecting other details.
         """
-        # Clear previous flagged ads
+        # Use HTTP + BeautifulSoup for ad scraping instead of in-browser navigation
+        return self._search_ads_http(search_term, url_patterns)
+
+    def _search_ads_http(self, search_term: str, url_patterns: List[str] = None) -> List[Dict]:
+        """Search Facebook Ad Library via HTTP and parse ads with BeautifulSoup."""
         self.flagged_ads = []
-        
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                if not self.ensure_driver_active():
-                    self.setup_driver()
-                    
-                # First ensure we're logged in
-                if not self.login_to_facebook():
-                    raise Exception("Failed to log in to Facebook")
-                
-                # Prepare fallback search URL (in case dynamic input fails)
-                try:
-                    from urllib.parse import quote as url_quote
-                except ImportError:
-                    from requests.utils import quote as url_quote
-                search_url = (
-                    "https://www.facebook.com/ads/library/"
-                    f"?active_status=active&ad_type=all&country=ALL&is_targeted_country=false"
-                    f"&media_type=all&q={url_quote(search_term)}&search_type=keyword_unordered"
-                )
-                # Navigate directly to the search URL (avoiding dynamic input issues)
-                print(f"Navigating to Facebook Ad Library with URL: {search_url}")
-                # Ensure driver is initialized before navigation
-                if not self.ensure_driver_active():
-                    self.setup_driver()
-                self.driver.get(search_url)
-                time.sleep(5)
-                # Wait for ad cards/articles to load (could be div[role='article'] or data-testid ad_card)
-                print("Waiting for ad elements to appear...")
-                try:
-                    WebDriverWait(self.driver, 30).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, "div[role='article'], div[data-testid='ad_card']"))
-                    )
-                except TimeoutException as e:
-                    # Dump a longer snippet of page source for debugging
-                    snippet = self.driver.page_source[:2000]
-                    if not self.quiet_mode:
-                        print("Debug: first 2000 chars of page source after timeout:\n", snippet)
-                    # Raise a descriptive exception including the snippet
-                    raise Exception(f"Timeout waiting for ad elements. Page source snippet:\n{snippet}") from e
-                print("Ad elements detected, proceeding...")
-                
-                # Scroll to load more ads
-                print("Scrolling to load more ads...")
-                self._scroll_to_load_more()
-                
-                print("\nAnalyzing all ad elements...")
-                try:
-                    # First find all ad elements using multiple selectors
-                    print("Finding all ad elements...")
-                    ad_elements = []
-                    
-                    # Try the most specific selector first
-                    elements = self.driver.find_elements(By.CSS_SELECTOR, "div[role='article']")
-                    if elements:
-                        ad_elements.extend(elements)
-                        print(f"Found {len(elements)} elements with article role")
-                    else:
-                        # If no articles found, try other selectors
-                        selectors = [
-                            "div[data-testid='ad_card']",
-                            "div[data-testid='fb-ad-card']",
-                            "div.x1yztbdb:not([role='button'])",
-                            "div.x1cy8zhl:not([role='button'])"
-                        ]
-                        
-                        for selector in selectors:
-                            if not ad_elements:  # Only try next selector if we haven't found elements yet
-                                elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
-                                if elements:
-                                    ad_elements.extend(elements)
-                                    print(f"Found {len(elements)} elements with selector: {selector}")
-                    
-                    # Remove duplicates while preserving order
-                    ad_elements = list(dict.fromkeys(ad_elements))
-                    print(f"\nFound {len(ad_elements)} unique ad elements")
-                    
-                    collected_ads = []
-                    
-                    for i, ad_element in enumerate(ad_elements, 1):
-                        try:
-                            print(f"\n{'='*80}")
-                            print(f"Ad Element #{i}")
-                            print(f"{'='*80}")
-                            
-                            # First, try to find the Learn More URL
-                            learn_more_url = None
-                            learn_more_final_url = None
-                            
-                            # Try multiple approaches to find links
-                            link_finding_methods = [
-                                # Method 1: Direct link elements
-                                lambda: ad_element.find_elements(By.CSS_SELECTOR, "a[href*='l.php']"),
-                                # Method 2: Links in parent
-                                lambda: ad_element.find_element(By.XPATH, "./..").find_elements(By.TAG_NAME, "a"),
-                                # Method 3: Links by role
-                                lambda: ad_element.find_elements(By.CSS_SELECTOR, "a[role='link']"),
-                                # Method 4: Any clickable element
-                                lambda: ad_element.find_elements(By.CSS_SELECTOR, "[onclick], [role='button'], a")
-                            ]
-                            
-                            print("\nLearn More Links Found:")
-                            print("-" * 40)
-                            
-                            for method in link_finding_methods:
-                                try:
-                                    links = method()
-                                    for link in links:
-                                        href = link.get_attribute('href')
-                                        text = link.text.strip()
-                                        
-                                        # Skip certain types of links
-                                        if not href or not text:
-                                            continue
-                                        if any(x in text.lower() for x in ['see ad details', 'active ad', 'library id:']):
-                                            continue
-                                        if 'facebook.com/ads/library' in href:
-                                            continue
-                                            
-                                        # Look specifically for the "Learn More" URL
-                                        # It's usually the last URL that's not a Facebook profile link
-                                        if not href.startswith('https://www.facebook.com/') or 'l.php' in href:
-                                            learn_more_url = href
-                                            learn_more_final_url = self.get_final_url(href)
-                                            
-                                            print(f"Text: {text}")
-                                            print(f"Original URL:  {href}")
-                                            print(f"Final URL:    {learn_more_final_url}")
-                                            print("-" * 20)
-                                            break
-                                            
-                                    if learn_more_url:
-                                        break
-                                except:
-                                    continue
-                            
-                            # If no Learn More URL found, skip this ad
-                            if not learn_more_url:
-                                print("No Learn More URL found, skipping ad")
-                                continue
-                                
-                            # Check if the Learn More URL matches any of the patterns
-                            url_matched = False
-                            if url_patterns:
-                                for pattern in url_patterns:
-                                    if self._urls_match(learn_more_final_url, pattern):
-                                        url_matched = True
-                                        break
-                                        
-                                if not url_matched:
-                                    print(f"Learn More URL {learn_more_final_url} did not match any patterns, skipping ad")
-                                    continue
-                            
-                            # If we get here, either there are no patterns to match or the URL matched
-                            # Now collect all other ad details
-                            print("\nURL matched! Collecting ad details...")
-                            
-                            # Get all text content
-                            ad_text = ad_element.text
-                            if not ad_text or ad_text.strip() == "See ad details":
-                                parent = ad_element.find_element(By.XPATH, "./..")
-                                if parent:
-                                    ad_text = parent.text
-                            
-                            # Extract ad page URL from advertiser link
-                            ad_page_url = None
-                            try:
-                                # Look for advertiser link with specific class
-                                advertiser_link = ad_element.find_element(By.CSS_SELECTOR, "a.xt0psk2.x1hl2dhg.xt0b8zv.x8t9es0.x1fvot60.xxio538.xjnfcd9.xq9mrsl.x1yc453h.x1h4wwuj.x1fcty0u")
-                                if advertiser_link:
-                                    ad_page_url = advertiser_link.get_attribute('href')
-                            except:
-                                # Fallback: try to find any link with the advertiser name pattern
-                                try:
-                                    links = ad_element.find_elements(By.TAG_NAME, "a")
-                                    for link in links:
-                                        href = link.get_attribute('href')
-                                        if href and '/ads/library/' not in href and 'facebook.com/' in href and not href.startswith('https://www.facebook.com/ads/'):
-                                            ad_page_url = href
-                                            break
-                                except:
-                                    pass
-                            
-                            ad_info = {
-                                'urls': [learn_more_final_url],
-                                'original_urls': [learn_more_url],
-                                'library_id': None,
-                                'ad_text': ad_text,
-                                'library_page': learn_more_url,
-                                'image_url': None,
-                                'ad_page_url': ad_page_url  # Add the ad page URL
-                            }
-                            
-                            # Check for watch words in ad text
-                            if self.watch_words:
-                                self.check_for_watch_words(ad_text, ad_info)
-                            
-                            # Look for Library ID
-                            if 'Library ID:' in ad_text:
-                                for line in ad_text.split('\n'):
-                                    if 'Library ID:' in line:
-                                        library_id = line.split('Library ID:')[1].strip()
-                                        print(f"\nLibrary ID Found: {library_id}")
-                                        ad_info['library_id'] = library_id
-                                        break
-                            
-                            # If no Library ID found in text, look for 15-16 digit numbers
-                            if not ad_info['library_id']:
-                                matches = self.driver.execute_script("""
-                                    function findIds(element) {
-                                        const text = element.innerText || element.textContent;
-                                        const matches = text.match(/\\b\\d{15,16}\\b/g) || [];
-                                        return matches;
-                                    }
-                                    return findIds(arguments[0]);
-                                """, ad_element)
-                                
-                                if matches:
-                                    ad_info['library_id'] = matches[0]
-                            
-                            # Extract image URL
-                            image_url = self._extract_image_url(ad_element)
-                            if image_url:
-                                print(f"Found image URL: {image_url}")
-                                ad_info['image_url'] = image_url
-                            
-                            # Add to collected ads
-                            collected_ads.append(ad_info)
-                            
-                        except Exception as e:
-                            print(f"Error analyzing ad element: {str(e)}")
-                            continue
-                    
-                except Exception as e:
-                    print(f"Error during analysis: {str(e)}")
-                
-                print("\nAnalysis complete")
-                # Return collected ads in the same window
-                return collected_ads
-                    
-            except TimeoutException as e:
-                print(f"Timeout error on attempt {attempt + 1}/{max_retries}: {str(e)}")
-                if attempt == max_retries - 1:
-                    raise
-                self.cleanup_driver()
-                time.sleep(5)
-                
-            except WebDriverException as e:
-                print(f"WebDriver error on attempt {attempt + 1}/{max_retries}: {str(e)}")
-                if attempt == max_retries - 1:
-                    raise
-                self.cleanup_driver()
-                time.sleep(5)
-                
-            except Exception as e:
-                print(f"Unexpected error on attempt {attempt + 1}/{max_retries}: {str(e)}")
-                if attempt == max_retries - 1:
-                    raise
-                self.cleanup_driver()
-                time.sleep(5)
-        
-        return []
+        # Ensure login and HTTP session
+        if not self.ensure_driver_active():
+            self.setup_driver()
+        if not self.login_to_facebook():
+            raise Exception("Failed to log in to Facebook for HTTP scraping")
+        session = self._init_http_session()
+        # Build search URL
+        try:
+            from urllib.parse import quote as url_quote
+        except ImportError:
+            from requests.utils import quote as url_quote
+        search_url = (
+            "https://www.facebook.com/ads/library/"
+            f"?active_status=active&ad_type=all&country=ALL&is_targeted_country=false"
+            f"&media_type=all&q={url_quote(search_term)}&search_type=keyword_unordered"
+        )
+        print(f"Fetching via HTTP: {search_url}")
+        resp = session.get(search_url, headers=self.http_headers, timeout=30)
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, "html.parser")
+        ad_elements = soup.select("div[role='article'], div[data-testid='ad_card']")
+        collected_ads: List[Dict] = []
+        for ad_el in ad_elements:
+            # Extract Learn More link
+            link_tag = ad_el.find("a", href=True)
+            if not link_tag:
+                continue
+            original_url = link_tag["href"]
+            final_url = self.get_final_url(original_url)
+            # Filter by patterns
+            if url_patterns:
+                if not any(self._urls_match(final_url, p) for p in url_patterns if p):
+                    continue
+            # Extract ad text
+            ad_text = ad_el.get_text(" ", strip=True)
+            # Extract library ID from text
+            library_id = None
+            for part in re.findall(r"\b\d{15,16}\b", ad_text):
+                library_id = part
+                break
+            # Extract first image
+            img_tag = ad_el.find("img", src=True)
+            image_url = img_tag["src"] if img_tag else None
+            collected_ads.append({
+                "urls": [final_url],
+                "original_urls": [original_url],
+                "library_id": library_id,
+                "ad_text": ad_text,
+                "library_page": original_url,
+                "image_url": image_url,
+                "ad_page_url": None
+            })
+        return collected_ads
 
     def _scroll_to_load_more(self):
         """Scroll the page to load more ads."""
@@ -962,14 +756,26 @@ class FacebookAdScraper:
     def _init_http_session(self):
         """Initialize an HTTP session using cookies from the Selenium driver."""
         if not self.session:
+            # Ensure WebDriver is active for cookie extraction
+            if not self.ensure_driver_active():
+                self.setup_driver()
+                self.login_to_facebook()
             self.session = requests.Session()
-            # Transfer cookies from Selenium to requests
-            for cookie in self.driver.get_cookies():
+            # Transfer cookies from Selenium to requests, with retry on stale driver
+            try:
+                selenium_cookies = self.driver.get_cookies()
+            except WebDriverException:
+                print("Driver not responsive when extracting cookies, reinitializing and relogin")
+                self.cleanup_driver()
+                self.setup_driver()
+                self.login_to_facebook()
+                selenium_cookies = self.driver.get_cookies()
+            for cookie in selenium_cookies:
                 self.session.cookies.set(
                     cookie['name'], cookie['value'],
                     domain=cookie.get('domain'), path=cookie.get('path')
                 )
-            # Grab the User-Agent from the browser
+            # Grab the User-Agent from the browser for HTTP headers
             ua = self.driver.execute_script("return navigator.userAgent;")
             self.http_headers = {"User-Agent": ua}
         return self.session
