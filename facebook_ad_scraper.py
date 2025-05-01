@@ -550,73 +550,82 @@ class FacebookAdScraper:
         if not self.login_to_facebook():
             raise Exception("Failed to log in to Facebook for HTTP scraping")
         session = self._init_http_session()
-        # Ensure HTTP session is valid
-        if session is None:
-            print("HTTP session initialization returned None; retrying...")
-            session = self._init_http_session()
-            if session is None:
-                raise Exception("Failed to initialize HTTP session; cannot perform HTTP requests")
-        # Build search URL
-        try:
-            from urllib.parse import quote as url_quote
-        except ImportError:
-            from requests.utils import quote as url_quote
-        # Use a simpler search URL to avoid Bad Request errors
-        search_url = f"https://www.facebook.com/ads/library/?active_status=all&ad_type=all&media_type=all&q={url_quote(search_term)}"
-        print(f"Fetching via HTTP: {search_url}")
-        try:
-            resp = session.get(search_url, headers=self.http_headers, timeout=30)
-            resp.raise_for_status()
-            html_content = resp.text
-        except Exception as fetch_err:
-            print(f"HTTP request failed ({fetch_err}); falling back to Selenium browser rendering")
-            # Ensure driver active and navigate to URL for JS rendering
+        # Debug session and driver state
+        print(f"DEBUG _search_ads_http: session={session}, type(session)={type(session)}")
+        print(f"DEBUG _search_ads_http: driver={self.driver}, type(driver)={type(self.driver)}")
+        # If HTTP session is invalid, fall back to Selenium HTML fetch immediately
+        if not session or not hasattr(session, 'get'):
+            print("Invalid HTTP session; falling back to Selenium HTML fetch")
             if not self.ensure_driver_active():
                 self.setup_driver()
                 self.login_to_facebook()
             self.driver.get(search_url)
             time.sleep(5)
             html_content = self.driver.page_source
-        # Parse the resulting HTML
-        soup = BeautifulSoup(html_content, "html.parser")
-        ad_elements = soup.select("div[role='article'], div[data-testid='ad_card']")
-        collected_ads: List[Dict] = []
-        for ad_el in ad_elements:
-            # Extract Learn More link
-            link_tag = ad_el.find("a", href=True)
-            if not link_tag:
-                continue
-            original_url = link_tag["href"]
-            # Resolve redirects via HTTP to avoid Selenium fallback and driver issues
+        else:
+            # Build search URL
             try:
-                head_resp = session.head(original_url, headers=self.http_headers, allow_redirects=True, timeout=10)
-                final_url = head_resp.url
-            except Exception:
-                final_url = original_url
-            # Filter by patterns
-            if url_patterns:
-                if not any(self._urls_match(final_url, p) for p in url_patterns if p):
+                from urllib.parse import quote as url_quote
+            except ImportError:
+                from requests.utils import quote as url_quote
+            # Use a simpler search URL to avoid Bad Request errors
+            search_url = f"https://www.facebook.com/ads/library/?active_status=all&ad_type=all&media_type=all&q={url_quote(search_term)}"
+            print(f"Fetching via HTTP: {search_url}")
+            try:
+                resp = session.get(search_url, headers=self.http_headers, timeout=30)
+                resp.raise_for_status()
+                html_content = resp.text
+            except Exception as fetch_err:
+                print(f"HTTP request failed ({fetch_err}); falling back to Selenium browser rendering")
+                html_content = None
+            # If we didn't get HTML, use Selenium to render
+            if not html_content:
+                if not self.ensure_driver_active():
+                    self.setup_driver()
+                    self.login_to_facebook()
+                self.driver.get(search_url)
+                time.sleep(5)
+                html_content = self.driver.page_source
+            # Parse the resulting HTML
+            soup = BeautifulSoup(html_content, "html.parser")
+            ad_elements = soup.select("div[role='article'], div[data-testid='ad_card']")
+            collected_ads: List[Dict] = []
+            for ad_el in ad_elements:
+                # Extract Learn More link
+                link_tag = ad_el.find("a", href=True)
+                if not link_tag:
                     continue
-            # Extract ad text
-            ad_text = ad_el.get_text(" ", strip=True)
-            # Extract library ID from text
-            library_id = None
-            for part in re.findall(r"\b\d{15,16}\b", ad_text):
-                library_id = part
-                break
-            # Extract first image
-            img_tag = ad_el.find("img", src=True)
-            image_url = img_tag["src"] if img_tag else None
-            collected_ads.append({
-                "urls": [final_url],
-                "original_urls": [original_url],
-                "library_id": library_id,
-                "ad_text": ad_text,
-                "library_page": original_url,
-                "image_url": image_url,
-                "ad_page_url": None
-            })
-        return collected_ads
+                original_url = link_tag["href"]
+                # Resolve redirects via HTTP to avoid Selenium fallback and driver issues
+                try:
+                    head_resp = session.head(original_url, headers=self.http_headers, allow_redirects=True, timeout=10)
+                    final_url = head_resp.url
+                except Exception:
+                    final_url = original_url
+                # Filter by patterns
+                if url_patterns:
+                    if not any(self._urls_match(final_url, p) for p in url_patterns if p):
+                        continue
+                # Extract ad text
+                ad_text = ad_el.get_text(" ", strip=True)
+                # Extract library ID from text
+                library_id = None
+                for part in re.findall(r"\b\d{15,16}\b", ad_text):
+                    library_id = part
+                    break
+                # Extract first image
+                img_tag = ad_el.find("img", src=True)
+                image_url = img_tag["src"] if img_tag else None
+                collected_ads.append({
+                    "urls": [final_url],
+                    "original_urls": [original_url],
+                    "library_id": library_id,
+                    "ad_text": ad_text,
+                    "library_page": original_url,
+                    "image_url": image_url,
+                    "ad_page_url": None
+                })
+            return collected_ads
 
     def _scroll_to_load_more(self):
         """Scroll the page to load more ads."""
