@@ -68,7 +68,7 @@ def index():
 def search():
     """Handle search requests."""
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
         search_term = data.get('search_term')
         url_patterns = data.get('url_patterns', [])
         
@@ -115,7 +115,7 @@ def search():
 @app.route('/download', methods=['POST'])
 def download():
     try:
-        data = request.json
+        data = request.json or {}
         matches = data.get('matches', [])
         format_type = data.get('format', 'json')  # Default to JSON if not specified
         
